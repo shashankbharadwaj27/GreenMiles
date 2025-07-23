@@ -1,0 +1,24 @@
+# Virtual Environment
+env/
+
+#logs
+server
+
+# Python
+__pycache__/
+*.pyc
+*.pyd
+*.so
+*.dist-info/
+*.egg-info/
+
+# Machine Learning models & data (often large and generated)
+*.pkl
+*.h5
+*.onnx
+
+# Generated output directories
+outputs/
+server/logs/
+
+node_modules
