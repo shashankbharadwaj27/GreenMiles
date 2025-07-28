@@ -1,3 +1,4 @@
+// src/pages/EVInput.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -22,6 +23,8 @@ export default function EVInput() {
   });
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false); // Add loading state
+  const [evSuggestions, setEvSuggestions] = useState([]); // New state for EV suggestions
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -52,37 +55,93 @@ export default function EVInput() {
       return;
     }
 
+    setLoading(true); // Set loading true on submission
+    setErrors({}); // Clear previous errors
+    setEvSuggestions([]); // Clear previous suggestions
+
     try {
-      const response = await fetch("http://localhost:8000/ev", {
+      // Ensure numerical fields are parsed for the backend
+      const payload = {
+        ...formData,
+        battery_percentage: parseFloat(formData.battery_percentage),
+        battery_age_years: parseFloat(formData.battery_age_years),
+        battery_capacity_kwh: parseFloat(formData.battery_capacity_kwh),
+        terrain_slope: parseFloat(formData.terrain_slope),
+        speed_avg_kmph: parseFloat(formData.speed_avg_kmph),
+        acceleration_level: parseFloat(formData.acceleration_level),
+        cargo_volume_liters: parseFloat(formData.cargo_volume_liters),
+        top_speed_kmph: parseFloat(formData.top_speed_kmph),
+        total_power_kw: parseFloat(formData.total_power_kw),
+        total_torque_nm: parseFloat(formData.total_torque_nm),
+        hvac_on: Boolean(formData.hvac_on) // Ensure boolean
+      };
+
+      // 1. Fetch Prediction
+      const predictionResponse = await fetch("http://localhost:8000/predict/ev", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
-      if (response.ok) {
+      const predictionResult = await predictionResponse.json();
+      let predictedRange = null;
+
+      if (predictionResponse.ok) {
+        predictedRange = predictionResult.predicted_range_km;
+      } else {
+        alert(`❌ Prediction failed: ${predictionResult.detail}`);
+      }
+
+      // 2. Fetch Suggestions (regardless of prediction success/failure)
+      let fetchedSuggestions = [];
+      try {
+        const suggestionsResponse = await fetch('http://localhost:8000/suggest/ev/suggestions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (suggestionsResponse.ok) {
+          const suggestionsData = await suggestionsResponse.json();
+          fetchedSuggestions = suggestionsData.suggestions;
+          setEvSuggestions(fetchedSuggestions); // Update state for display on this page
+        } else {
+          const errorData = await suggestionsResponse.json();
+          console.error('Failed to fetch EV suggestions:', errorData.detail || 'Unknown error');
+          // Optionally, display an alert for suggestions failure if needed
+        }
+      } catch (suggestionError) {
+        console.error('Error fetching EV suggestions:', suggestionError);
+      }
+
+      // Navigate to results page with prediction (if successful) and fetched suggestions
+      if (predictedRange !== null) {
         navigate('/results', {
           state: {
             type: 'ev',
-            result: result.predicted_range_km,
-            inputData: formData
+            prediction: predictedRange, // Use 'prediction' key for consistency with Results.jsx
+            inputData: formData,
+            suggestions: fetchedSuggestions // Pass fetched suggestions to results page
           }
         });
-      } else {
-        alert(`❌ Prediction failed: ${result.detail}`);
       }
+
     } catch (error) {
       console.error("❌ Error submitting form:", error);
       alert("❌ An error occurred during submission.");
+    } finally {
+      setLoading(false); // Set loading false after completion
     }
   };
+
   const inputConfig = [
     { name: "battery_percentage", placeholder: "Battery %", min: 0, max: 100 },
     { name: "battery_age_years", placeholder: "Battery Age (years)", min: 0 },
     { name: "battery_capacity_kwh", placeholder: "Battery Capacity (kWh)", min: 0 },
-    // { name: "terrain_slope", placeholder: "Terrain Slope (%)", min: -100, max: 100 },
     { name: "speed_avg_kmph", placeholder: "Avg Speed (km/h)", min: 0 },
     { name: "acceleration_level", placeholder: "Acceleration (0–1)", step: "0.01", min: 0, max: 1 },
     { name: "cargo_volume_liters", placeholder: "Cargo Volume (liters)", min: 0 },
@@ -102,7 +161,7 @@ export default function EVInput() {
           <p className="text-gray-300 text-lg">
             Enter vehicle and driving parameters to estimate how far your EV can go.
           </p>
-                    <button
+          <button
             onClick={() => navigate("/")}
             className="mt-4 px-4 py-2 cursor-pointer bg-green-700 hover:bg-green-800 rounded-lg text-white text-sm shadow"
           >
@@ -121,7 +180,7 @@ export default function EVInput() {
       </div>
 
       {/* Form Section */}
-       <form
+      <form
         onSubmit={handleSubmit}
         className="w-full max-w-4xl bg-[#0f1a1c] p-8 rounded-3xl shadow-2xl space-y-6 border border-green-800"
       >
@@ -130,7 +189,7 @@ export default function EVInput() {
             <div key={name}>
               <input
                 className="input appearance-none w-full"
-                type=""
+                type="number" // Ensure type is number for numerical inputs
                 name={name}
                 placeholder={placeholder}
                 step={step || "any"}
@@ -148,15 +207,25 @@ export default function EVInput() {
               )}
             </div>
           ))}
-          <input
-            type="text"
-            inputMode="decimal"
-            pattern="^-?\d*\.?\d*$"
-            name="terrain_slope"
-            placeholder="Terrain Slope"
-            value={formData.terrain_slope}
-            onChange={handleChange}
-          />
+          {/* Specific input for terrain_slope, ensuring it's a number type */}
+          <div>
+            <input
+              type="number" // Changed to number type
+              inputMode="decimal"
+              pattern="^-?\d*\.?\d*$"
+              name="terrain_slope"
+              placeholder="Terrain Slope"
+              value={formData.terrain_slope}
+              onChange={handleChange}
+              onKeyDown={(e) =>
+                  ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()
+                }
+              required // Added required
+            />
+            {errors.terrain_slope && (
+              <p className="text-red-500 text-sm mt-1">{errors.terrain_slope}</p>
+            )}
+          </div>
 
           <select
             className="input bg-[#0f1a1c]"
@@ -204,11 +273,25 @@ export default function EVInput() {
 
         <button
           type="submit"
+          disabled={loading} // Disable button when loading
           className="mt-4 w-full py-3 rounded-xl bg-gradient-to-r cursor-pointer from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 text-white font-semibold shadow-xl"
         >
-          🚗 Predict Range
+          {loading ? 'Predicting...' : '🚗 Predict Range'}
         </button>
       </form>
+
+      {/* NEW SECTION: Display EV Suggestions */}
+      {evSuggestions.length > 0 && (
+        <div className="w-full max-w-4xl mt-8 p-6 bg-[#0f1a1c] rounded-3xl shadow-xl border border-green-700">
+          <h3 className="text-xl font-bold text-green-400 mb-4">Suggestions for Optimization:</h3>
+          <ul className="list-disc list-inside text-gray-300 space-y-2">
+            {evSuggestions.map((suggestion, index) => (
+              <li key={index}>{suggestion}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {/* END NEW SECTION */}
     </div>
   );
 }

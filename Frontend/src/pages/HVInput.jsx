@@ -1,3 +1,4 @@
+// src/pages/HVInput.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
@@ -23,47 +24,60 @@ export default function HVInput() {
   });
 
   const inputConfig = [
-    { name: "hydrogen_percentage", placeholder: "Hydrogen Tank %", min: 0, max: 100 },
-    { name: "fuel_cell_age_years", placeholder: "Fuel Cell Age (years)", min: 0 },
-    { name: "fuel_cell_efficiency", placeholder: "Fuel Cell Efficiency", min: 0, max: 100, step: "0.01" },
-    { name: "speed_avg_kmph", placeholder: "Avg Speed (km/h)", min: 0 },
-    { name: "acceleration_level", placeholder: "Acceleration (0–1)", min: 0, max: 1, step: "0.01" },
-    { name: "cargo_volume_liters", placeholder: "Cargo Volume (liters)", min: 0 },
-    { name: "top_speed_kmph", placeholder: "Top Speed (km/h)", min: 0 },
-    { name: "total_power_kw", placeholder: "Total Power (kW)", min: 0 },
-    { name: "total_torque_nm", placeholder: "Total Torque (Nm)", min: 0 },
+    { name: "hydrogen_percentage", placeholder: "Hydrogen Tank %", min: 0, max: 100, type: "number" },
+    { name: "fuel_cell_age_years", placeholder: "Fuel Cell Age (years)", min: 0, type: "number" },
+    { name: "fuel_cell_efficiency", placeholder: "Fuel Cell Efficiency", min: 0, max: 100, step: "0.01", type: "number" },
+    { name: "speed_avg_kmph", placeholder: "Avg Speed (km/h)", min: 0, type: "number" },
+    { name: "acceleration_level", placeholder: "Acceleration (0–1)", min: 0, max: 1, step: "0.01", type: "number" },
+    { name: "cargo_volume_liters", placeholder: "Cargo Volume (liters)", min: 0, type: "number" },
+    { name: "top_speed_kmph", placeholder: "Top Speed (km/h)", min: 0, type: "number" },
+    { name: "total_power_kw", placeholder: "Total Power (kW)", min: 0, type: "number" },
+    { name: "total_torque_nm", placeholder: "Total Torque (Nm)", min: 0, type: "number" },
   ];
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [hvSuggestions, setHvSuggestions] = useState([]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
+    let newValue = value;
+
+    if (type === "number") {
+      newValue = value.replace(",", ".");
+    }
+
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: type === "checkbox" ? checked : newValue,
+    }));
   };
 
   const validate = () => {
     const newErrors = {};
-    if (formData.hydrogen_percentage < 0 || formData.hydrogen_percentage > 100) newErrors.hydrogen_percentage = "Hydrogen % must be between 0 and 100.";
-    if (formData.acceleration_level < 0 || formData.acceleration_level > 1) newErrors.acceleration_level = "Acceleration must be between 0 and 1.";
-    if (formData.speed_avg_kmph < 0) newErrors.speed_avg_kmph = "Speed must be a positive value.";
-    if (formData.fuel_cell_age_years < 0) newErrors.fuel_cell_age_years = "Age must be a positive value.";
-    if (formData.fuel_cell_efficiency < 0 || formData.fuel_cell_efficiency > 100) newErrors.fuel_cell_efficiency = "Efficiency must be between 0 and 100.";
+    if (formData.hydrogen_percentage !== "" && (parseFloat(formData.hydrogen_percentage) < 0 || parseFloat(formData.hydrogen_percentage) > 100)) newErrors.hydrogen_percentage = "Hydrogen % must be between 0 and 100.";
+    if (formData.acceleration_level !== "" && (parseFloat(formData.acceleration_level) < 0 || parseFloat(formData.acceleration_level) > 1)) newErrors.acceleration_level = "Acceleration must be between 0 and 1.";
+    if (formData.speed_avg_kmph !== "" && parseFloat(formData.speed_avg_kmph) < 0) newErrors.speed_avg_kmph = "Speed must be a positive value.";
+    if (formData.fuel_cell_age_years !== "" && parseFloat(formData.fuel_cell_age_years) < 0) newErrors.fuel_cell_age_years = "Age must be a positive value.";
+    if (formData.fuel_cell_efficiency !== "" && (parseFloat(formData.fuel_cell_efficiency) < 0 || parseFloat(formData.fuel_cell_efficiency) > 100)) newErrors.fuel_cell_efficiency = "Efficiency must be between 0 and 100.";
+    if (formData.terrain_slope !== "" && isNaN(parseFloat(formData.terrain_slope)))
+        newErrors.terrain_slope = "Terrain Slope must be a valid number.";
     return newErrors;
   };
 
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(formData)
+    console.log("Sending formData:", formData);
 
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
+
+    setLoading(true);
+    setErrors({});
+    setHvSuggestions([]);
 
     const formattedPayload = {
       acceleration_level: parseFloat(formData.acceleration_level),
@@ -82,23 +96,67 @@ export default function HVInput() {
       total_torque_nm: parseFloat(formData.total_torque_nm),
     };
 
+    let predictedRange = null;
+    let predictionSuccess = false;
 
     try {
-      const { data } = await axios.post("http://localhost:8000/predict/hv", formattedPayload, {
+      // 1. Fetch Prediction
+      const predictionResponse = await axios.post("http://localhost:8000/predict/hv", formattedPayload, {
         headers: { "Content-Type": "application/json" },
       });
 
-      navigate("/results", {
-        state: {
-          type: "hv",
-          result: data.predicted_range_km,
-          inputData: formData,
-        },
-      });
+      predictedRange = predictionResponse.data.predicted_range_km; // Access .data.predicted_range_km
+      
+      if (typeof predictedRange === 'number' && !isNaN(predictedRange) && isFinite(predictedRange)) {
+          predictionSuccess = true;
+          console.log('HV Prediction successful:', predictedRange);
+      } else {
+          console.error('HV Prediction successful but value is invalid:', predictedRange);
+          alert('Failed to get a valid range prediction. Please check your inputs.');
+      }
+
     } catch (error) {
       console.error("Prediction request failed:", error);
       alert("Failed to predict range. Please try again.");
     }
+
+    // 2. Fetch Suggestions (always attempt, regardless of prediction success)
+    let fetchedSuggestions = [];
+    try {
+      const suggestionsResponse = await fetch('http://localhost:8000/suggest/hv/suggestions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formattedPayload),
+      });
+
+      if (suggestionsResponse.ok) {
+        const suggestionsData = await suggestionsResponse.json();
+        fetchedSuggestions = suggestionsData.suggestions;
+        setHvSuggestions(fetchedSuggestions);
+        console.log('HV Suggestions fetched:', fetchedSuggestions);
+      } else {
+        const errorData = await suggestionsResponse.json();
+        console.error('Failed to fetch HV suggestions:', errorData.detail || 'Unknown error');
+      }
+    } catch (suggestionError) {
+      console.error('Error fetching HV suggestions:', suggestionError);
+    }
+
+    // Only navigate if prediction was successful AND valid
+    if (predictionSuccess) {
+      navigate("/results", {
+        state: {
+          type: "hv",
+          prediction: predictedRange,
+          inputData: formData,
+          suggestions: fetchedSuggestions
+        },
+      });
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -133,11 +191,11 @@ export default function HVInput() {
       {/* Form Section */}
       <form onSubmit={handleSubmit} className="w-full max-w-4xl bg-[#0f1a1c] p-8 rounded-3xl shadow-2xl space-y-6 border border-blue-800">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {inputConfig.map(({ name, placeholder, step, min, max }) => (
+          {inputConfig.map(({ name, placeholder, step, min, max, type }) => (
             <div key={name}>
               <input
                 className="input appearance-none w-full"
-                type="number"
+                type={type}
                 name={name}
                 placeholder={placeholder}
                 step={step || "any"}
@@ -152,15 +210,23 @@ export default function HVInput() {
             </div>
           ))}
 
-          <input
-            type="text"
-            inputMode="decimal"
-            pattern="^-?\d*\.?\d*$"
-            name="terrain_slope"
-            placeholder="Terrain Slope"
-            value={formData.terrain_slope}
-            onChange={handleChange}
-          />
+          {/* Specific input for terrain_slope, ensure type="number" */}
+          <div>
+            <input
+              type="number"
+              inputMode="decimal"
+              pattern="^-?\d*\.?\d*$"
+              name="terrain_slope"
+              placeholder="Terrain Slope"
+              value={formData.terrain_slope}
+              onChange={handleChange}
+              onKeyDown={(e) => ["e", "E", "+", "-"].includes(e.key) && e.preventDefault()}
+              required
+            />
+            {errors.terrain_slope && (
+              <p className="text-red-500 text-sm mt-1">{errors.terrain_slope}</p>
+            )}
+          </div>
 
           <select className="input bg-[#0f1a1c]" name="ambient_temp" onChange={handleChange} value={formData.ambient_temp}>
             <option value="cold">Cold</option>
@@ -194,11 +260,25 @@ export default function HVInput() {
 
         <button
           type="submit"
+          disabled={loading}
           className="mt-4 w-full py-3 rounded-xl bg-gradient-to-r cursor-pointer from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 text-white font-semibold shadow-xl"
         >
-          🚗 Predict Range
+          {loading ? 'Predicting...' : '🚗 Predict Range'}
         </button>
       </form>
+
+      {/* NEW SECTION: Display HV Suggestions */}
+      {hvSuggestions.length > 0 && (
+        <div className="w-full max-w-4xl mt-8 p-6 bg-[#0f1a1c] rounded-3xl shadow-xl border border-blue-700">
+          <h3 className="text-xl font-bold text-blue-400 mb-4">Suggestions for Optimization:</h3>
+          <ul className="list-disc list-inside text-gray-300 space-y-2">
+            {hvSuggestions.map((suggestion, index) => (
+              <li key={index}>{suggestion}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {/* END NEW SECTION */}
     </div>
   );
 }

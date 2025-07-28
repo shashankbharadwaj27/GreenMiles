@@ -1,7 +1,7 @@
 # Backend/schemas/hv_schema.py
 from pydantic import BaseModel
 
-class HVInputData(BaseModel):
+class HVInput(BaseModel):
     # Raw inputs directly from hv.csv structure
     hydrogen_percentage: float
     fuel_cell_age_years: float

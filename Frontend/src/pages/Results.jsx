@@ -1,9 +1,10 @@
+// src/pages/Results.jsx
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const Results = () => {
-  const navigate = useNavigate();
   const location = useLocation();
+  const navigate = useNavigate();
   const state = location.state;
 
   if (!state) {
@@ -11,12 +12,13 @@ const Results = () => {
     return null;
   }
 
-  const { type, result, inputData } = state;
+  // Destructure 'prediction' and 'suggestions' from state.
+  const { type, prediction, suggestions, inputData } = state; 
 
   const title =
     type === 'ev' ? 'Estimated EV Range' : 'Estimated Hydrogen Vehicle Range';
   const icon = type === 'ev' ? '🔋' : '🚗💨';
-  const predictedRange = result ? result : 'N/A';
+  const predictedRange = prediction ? prediction : 'N/A'; // Use 'prediction' for the range value
 
   const onBack = () => {
     navigate(type === 'ev' ? '/ev/predict' : '/hv/predict');
@@ -33,7 +35,20 @@ const Results = () => {
           {icon} {predictedRange} km
         </p>
 
-        {/* Caution section */}
+        {/* --- NEW SECTION: Display Suggestions --- */}
+        {suggestions && suggestions.length > 0 && ( // Conditionally render suggestions
+          <div className="mt-6 p-4 bg-blue-100 dark:bg-blue-300/20 border-l-4 border-blue-400 dark:border-blue-300 text-blue-800 dark:text-blue-200 rounded-md">
+            <p className="font-medium">💡 Optimization Suggestions:</p>
+            <ul className="list-disc list-inside mt-2 text-sm">
+              {suggestions.map((suggestion, index) => (
+                <li key={index}>{suggestion}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {/* --- END NEW SECTION --- */}
+
+        {/* Original Caution section */}
         <div className="mt-6 bg-yellow-100 dark:bg-yellow-300/20 border-l-4 border-yellow-400 dark:border-yellow-300 text-yellow-800 dark:text-yellow-200 p-4 rounded-md">
           <p className="font-medium">⚠️ Caution:</p>
           <p className="text-sm mt-1">
