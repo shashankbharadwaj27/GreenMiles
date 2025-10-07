@@ -48,8 +48,8 @@ Follow these steps to get the project running locally:
     venv\Scripts\activate
     pip install -r requirements.txt
     uvicorn main:app --reload
-2. **Frontend**
-    cd ../Frontend
+3. **Frontend**
+    cd Frontend
     npm install
     npm start
 4. **Access application**
@@ -61,12 +61,16 @@ Follow these steps to get the project running locally:
 
 **Homepage**
 ![Homepage](assets/home.png)
+
 **EV Page**
 ![EV Page](assets/ev.png)
+
 **EV Result Page**
 ![EV Result Page](assets/evresult.png)
+
 **HV Page**
 ![HV Page](assets/hv.png)
+
 **HV Result Page**
 ![HV Result Page](assets/hvresult.png)
 
