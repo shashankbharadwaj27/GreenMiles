@@ -83,23 +83,21 @@ Follow these steps to get the project running locally:
 ```
 Green-Miles/
 ├── Backend/
-│ ├── app/
-│ │ ├── models.py
-│ │ ├── views / controllers/
-│ │ ├── serializers (if API) / schemas
-│ │ ├── urls / routes
-│ │ └── etc.
-│ ├── manage.py (or equivalent entry)
+│ ├── agents/
+│ ├── data/
+│ ├── models/
+│ ├── preprocess/
+│ ├── routes/
+│ ├── schemas/
+│ ├── scripts/
+│ ├── utils/
 │ ├── requirements.txt
-│ └── ... (other backend configs, settings, migrations)
+│ └── main.py
 ├── Frontend/
-│ ├── public/
 │ ├── src/
-│ │ ├── components/
-│ │ ├── pages / views
-│ │ ├── services / api
-│ │ └── store / state
-│ ├── assets / styles
+│ │ ├── pages
+│ │ └── assets
+│ ├── index.html
 │ ├── package.json
 │ └── ... (other frontend config)
 ├── .gitignore
