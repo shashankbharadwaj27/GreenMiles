@@ -24,20 +24,7 @@ It combines machine learning models, data preprocessing pipelines, and a user-fr
 
 ---
 
-## 🚀 Setup Instructions
 
-Follow these steps to set up **Green-Miles** locally:
-
-### **1. Clone the repository**
-
-
-git clone https://github.com/Nishi4k/Green-Miles.git
-
-
-
-
-
-cd Green-Miles
 
 
 ## 🚀 Setup Instructions
