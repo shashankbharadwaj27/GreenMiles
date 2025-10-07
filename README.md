@@ -59,11 +59,15 @@ Follow these steps to get the project running locally:
 
 ### ScreenShots
 
-
+**Homepage**
 ![Homepage](assets/home.png)
+**EV Page**
 ![EV Page](assets/ev.png)
+**EV Result Page**
 ![EV Result Page](assets/evresult.png)
+**HV Page**
 ![HV Page](assets/hv.png)
+**HV Result Page**
 ![HV Result Page](assets/hvresult.png)
 
 
